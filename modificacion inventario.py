@@ -1,4 +1,5 @@
 import os
+import json
 
 # Definimos la clase Producto
 class Producto:
@@ -11,46 +12,47 @@ class Producto:
     def __str__(self):
         return f"{self.nombre}, (ID: {self.id}, Precio: {self.precio}, Cantidad: {self.cantidad})"
 
-    def to_line(self):
-        """Convertir el producto a una línea de texto para almacenamiento en archivo."""
-        return f"{self.id},{self.nombre},{self.precio},{self.cantidad}\n"
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'precio': self.precio,
+            'cantidad': self.cantidad
+        }
 
     @classmethod
-    def from_line(cls, line):
-        """Crear un producto a partir de una línea de texto."""
-        id, nombre, precio, cantidad = line.strip().split(',')
-        return cls(int(id), nombre, float(precio), int(cantidad))
+    def from_dict(cls, data):
+        return cls(data['id'], data['nombre'], data['precio'], data['cantidad'])
 
 # Clase Inventario para gestionar múltiples productos
 class Inventario:
-    def __init__(self, archivo='inventario.txt'):
+    def __init__(self, archivo='inventario.json'):
         self.archivo = archivo
         self.productos = {}
         self.cargar_inventario()
 
     def cargar_inventario(self):
-        """Cargar el inventario desde un archivo de texto."""
+        """Cargar el inventario desde un archivo JSON."""
         if os.path.exists(self.archivo):
             try:
                 with open(self.archivo, 'r') as file:
-                    for line in file:
-                        producto = Producto.from_line(line)
-                        self.productos[producto.id] = producto
+                    datos = json.load(file)
+                    self.productos = {prod['id']: Producto.from_dict(prod) for prod in datos}
             except FileNotFoundError:
                 print("Archivo no encontrado. Se creará un nuevo archivo.")
-            except PermissionError:
-                print("Error: No se tienen permisos para leer el archivo.")
+            except json.JSONDecodeError:
+                print("Error al leer el archivo. El archivo está corrupto.")
             except Exception as e:
                 print(f"Error inesperado al cargar el inventario: {e}")
         else:
             print("No se encontró el archivo de inventario. Se creará uno nuevo.")
 
     def guardar_inventario(self):
-        """Guardar el inventario en un archivo de texto."""
+        """Guardar el inventario en un archivo JSON."""
         try:
             with open(self.archivo, 'w') as file:
-                for producto in self.productos.values():
-                    file.write(producto.to_line())
+                datos = [prod.to_dict() for prod in self.productos.values()]
+                json.dump(datos, file, indent=4)
         except PermissionError:
             print("Error: No se tienen permisos para escribir en el archivo.")
         except Exception as e:
@@ -139,3 +141,4 @@ def menu():
 # Ejecutar el menú
 if __name__ == "__main__":
     menu()
+
